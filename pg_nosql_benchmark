@@ -25,15 +25,14 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 #===============================================================================
-#title           : pg_nosql_benchmark.
-#description     : This script will help in benchmarking PostgreSQL (JSONB) and
-#                : MongoDB (BSON).
-#author          : Vibhor Kumar (vibhor.aim@gmail.com).
-#date            : July 17, 2014
+#modification    : Compares the select and insert performance between PostgreSQL and MongoDB.
+#author          : Amirdha Gopal R (amirdhagopal@gmail.com).
+#date            : March 10, 2015
 #version         : 2.0.1
 #usage           : bash pg_nosql_benchmark
 #notes           : Install Vim and Emacs to use this script.
 #bash_version    : GNU bash, version 4.1.2(1)-release (x86_64-redhat-linux-gnu)
+#adapted from    : https://github.com/EnterpriseDB/pg_nosql_benchmark
 #===============================================================================
 
 ################################################################################
@@ -55,7 +54,7 @@ PGBIN="/d/Program Files/PostgreSQL/9.4/bin"
 # set mongo variables.
 ################################################################################
 MONGO="/c/Progra~1/MongoDB/Server/3.0/bin/mongo"
-MONGOIMPORT="/c/Progra~1/MongoDB/Server/3.0/mongoimport"
+MONGOIMPORT="/c/Progra~1/MongoDB/Server/3.0/bin/mongoimport"
 MONGOHOST="localhost"
 MONGOPORT="27017"
 MONGOUSER="mongo"
@@ -64,6 +63,7 @@ MONGODBNAME="benchmark"
 
 COLLECTION_NAME="json_tables"
 SAMPLEJSON="sample.json"
+SAMPLECSV="sample1.csv"
 PG_INSERTS="sample_pg_inserts.json"
 MONGO_INSERTS="sample_mongo_inserts.json"
 
@@ -78,7 +78,7 @@ source ${DIRECTORY}/lib/mongo_func_lib.sh
 ################################################################################
 # declare require arrays
 ################################################################################
-declare -a json_rows=(10000000)
+declare -a json_rows=(10000)
 
 declare -a pg_size_time
 declare -a pg_copy_time
@@ -115,15 +115,18 @@ process_log "PostgreSQL Version $pg_version"
 for (( indx=0 ; indx < ${#json_rows[@]} ; indx++ ))
 do
    generate_json_rows "${json_rows[${indx}]}" \
-                      "${SAMPLEJSON}"
+                      "${SAMPLEJSON}" \
+                      "${SAMPLECSV}"
 
    pg_json_insert_maker "${COLLECTION_NAME}"    \
                         "${json_rows[${indx}]}" \
-                        "${PG_INSERTS}"
+                        "${PG_INSERTS}" \
+                        "${SAMPLECSV}"
 
    mongo_json_insert_maker "${COLLECTION_NAME}"    \
                            "${json_rows[${indx}]}" \
-                           "${MONGO_INSERTS}"
+                           "${MONGO_INSERTS}" \
+                           "${SAMPLEJSON}"
 
 
    remove_pg_db "${PGHOST}"     \
@@ -157,7 +160,7 @@ do
                                               "${PGUSER}"          \
                                               "${PGPASSWORD}"      \
                                               "${COLLECTION_NAME}" \
-                                              "${SAMPLEJSON}"
+                                              "${SAMPLECSV}"
                           )
 
 
@@ -259,6 +262,7 @@ print_result "MONGO INSERT (ns)"  "${mongo_inserts_time[@]}"
 print_result "MONGO SELECT (ns)"  "${mongo_select_time[@]}"
 print_result "MONGO SIZE (bytes)" "${mongo_size_time[@]}"
 
-rm -rf ${SAMPLEJSON}*
-rm -rf ${PG_INSERTS}
-rm -rf ${MONGO_INSERTS}
+# Uncomment this to remove the temp files at the end.
+#rm -rf ${SAMPLEJSON}*
+#rm -rf ${PG_INSERTS}
+#rm -rf ${MONGO_INSERTS}

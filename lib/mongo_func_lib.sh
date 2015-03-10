@@ -27,9 +27,8 @@
 # LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
-#
-#  Author: Vibhor Kumar
-#  E-mail ID: vibhor.aim@gmail.com
+#  Author: Amirdha Gopal R.
+#  adapted from    : https://github.com/EnterpriseDB/pg_nosql_benchmark
 
 ################################################################################
 # source common lib
@@ -101,15 +100,15 @@ function mongo_json_insert_maker ()
    typeset -r COLLECTION_NAME="$1"
    typeset -r NO_OF_ROWS="$2"
    typeset -r JSON_FILENAME="$3"
+   typeset -r SOURCE_FILENAME="$4"
 
    rm -rf ${JSON_FILENAME}
    process_log "preparing mongo insert commands."
-   NO_OF_LOOPS=$((${NO_OF_ROWS}/11 + 1 ))
-   for ((i=0;i<${NO_OF_LOOPS};i++))
+   
+   while read record
    do
-       json_seed_data $i | sed "s/^/db.${COLLECTION_NAME}.insert( /" | \
-                         sed "s/$/ )/" >>${JSON_FILENAME}
-   done
+       echo "db.${COLLECTION_NAME}.insert(${record})" >> ${JSON_FILENAME} 
+   done < ${SOURCE_FILENAME}
 }
 
 ################################################################################
@@ -132,7 +131,7 @@ function mongodb_import_benchmark ()
                   --username ${F_MONGOUSER} --password ${F_MONGOPASSWORD} \
                   --type json  --port ${F_MONGOPORT}                      \
                   --collection ${F_COLLECTION} < ${F_FILENAME} >/dev/null \
-                  2>>/dev/null
+                   2>>/dev/null
    end_time=$(get_timestamp_nano)
    total_time="$(get_timestamp_diff_nano "${end_time}" "${start_time}")"
    echo "${total_time}"
@@ -175,10 +174,9 @@ function mongodb_select_benchmark ()
    F_MONGOUSER="$4"
    F_MONGOPASSWORD="$5"
    F_COLLECTION="$6"
-   F_MONGOSELECT1="db.${F_COLLECTION}.find({ brand: 'ACME'})"
-   F_MONGOSELECT2="db.${F_COLLECTION}.find({ name: 'Phone Service Basic Plan'})"
-   F_MONGOSELECT3="db.${F_COLLECTION}.find({ name: 'AC3 Case Red'})"
-   F_MONGOSELECT4="db.${F_COLLECTION}.find({ type: 'service'})"
+   F_MONGOSELECT1="db.${F_COLLECTION}.find({ is_deleted: 'false'}, {name: 1})"
+   F_MONGOSELECT2="db.${F_COLLECTION}.find({ application: 'APP1', parent_id: 1, is_deleted: 'false'}, {name: 1, thumbnail: 1, notes: 1})"
+   F_MONGOSELECT3="db.${F_COLLECTION}.find({ is_deleted: 'true'}, {name: 1})"
 
    process_log "testing mongo FIRST SELECT."
    start_time=$(get_timestamp_nano)
@@ -204,15 +202,7 @@ function mongodb_select_benchmark ()
    end_time=$(get_timestamp_nano)
    total_time3="$(get_timestamp_diff_nano "${end_time}" "${start_time}")"
 
-   process_log "testing mongo FOURTH SELECT."
-   start_time=$(get_timestamp_nano)
-   run_mongo_command "${F_MONGOHOST}" "${MONGOPORT}" "${F_MONGODBNAME}" \
-                     "${F_MONGOUSER}" \
-                     "${F_MONGOPASSWORD}" "${F_MONGOSELECT4}" >/dev/null
-   end_time=$(get_timestamp_nano)
-   total_time4="$(get_timestamp_diff_nano "${end_time}" "${start_time}")"
-
-   AVG="$(( ($total_time1 + $total_time2 + $total_time3 + $total_time4)/4 ))"
+   AVG="$(( ($total_time1 + $total_time2 + $total_time3 )/3 ))"
 
    echo "${AVG}"
 }
@@ -234,7 +224,8 @@ function mongo_collection_size ()
    output="$(run_mongo_command "${F_MONGOHOST}" "${F_MONGOPORT}"   \
                                "${F_MONGODBNAME}" "${F_MONGOUSER}" \
                                "${F_MONGOPASSWORD}" "${F_COMMAND}")"
-   collectionsize="$(echo ${output}|awk -F"," '{print $5}'|cut -d":" -f2)"
+
+   collectionsize="$(echo ${output}|awk -F"," '{print $4}'|cut -d":" -f2)"
 
    echo "${collectionsize}"
 }
@@ -255,7 +246,7 @@ function mongo_version ()
    output="$(run_mongo_command "${F_MONGOHOST}" "${F_MONGOPORT}"   \
                                "${F_MONGODBNAME}" "${F_MONGOUSER}"  \
                                "${F_MONGOPASSWORD}" "${F_COMMAND}" )"
-   version=$(echo $output|awk '{print $2}')
+   version=$(echo $output|awk '{print $(NF)}')
 
    echo "${version}"
 }
@@ -272,19 +263,11 @@ function mongodb_create_index ()
    typeset -r F_MONGOUSER="$4"
    typeset -r F_MONGOPASSWORD="$5"
    typeset -r F_COLLECTION="$6"
-   typeset -r F_MONGODBIDX1="db.${F_COLLECTION}.ensureIndex( { \"name\": 1});"
-   typeset -r F_MONGODBIDX2="db.${F_COLLECTION}.ensureIndex( { \"type\": 1});"
-   typeset -r F_MONGODBIDX3="db.${F_COLLECTION}.ensureIndex( { \"brand\": 1});"
+   typeset -r F_MONGODBIDX1="db.${F_COLLECTION}.ensureIndex( { application: 1, parent_id: 1, is_deleted: 1 });"
 
    process_log "creating index in mongodb."
    run_mongo_command "${F_MONGOHOST}" "${MONGOPORT}" "${F_MONGODBNAME}" \
                      "${F_MONGOUSER}" \
                      "${F_MONGOPASSWORD}" "${F_MONGODBIDX1}" >/dev/null
-   run_mongo_command "${F_MONGOHOST}" "${MONGOPORT}" "${F_MONGODBNAME}" \
-                     "${F_MONGOUSER}" \
-                     "${F_MONGOPASSWORD}" "${F_MONGODBIDX2}" >/dev/null
-   run_mongo_command "${F_MONGOHOST}" "${MONGOPORT}" "${F_MONGODBNAME}" \
-                     "${F_MONGOUSER}" \
-                     "${F_MONGOPASSWORD}" "${F_MONGODBIDX3}" >/dev/null
 
 }

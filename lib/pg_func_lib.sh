@@ -28,8 +28,9 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 #
-#  Author: Vibhor Kumar
-#  E-mail ID: vibhor.aim@gmail.com
+# Amirdha Gopal R
+#
+# adapted from    : https://github.com/EnterpriseDB/pg_nosql_benchmark
 
 ################################################################################
 # source common lib
@@ -44,16 +45,15 @@ function pg_json_insert_maker ()
    typeset -r COLLECTION_NAME="$1"
    typeset -r NO_OF_ROWS="$2"
    typeset -r JSON_FILENAME="$3"
+   typeset -r SOURCE_FILENAME="$4"
 
    process_log "preparing postgresql INSERTs."
    rm -rf ${JSON_FILENAME}
-   NO_OF_LOOPS=$((${NO_OF_ROWS}/11 + 1 ))
-   for ((i=0;i<${NO_OF_LOOPS};i++))
+
+   while read record
    do
-       json_seed_data $i | \
-        sed "s/^/INSERT INTO ${COLLECTION_NAME} VALUES(\$JSON\$/"| \
-        sed "s/$/\$JSON\$);/" >>${JSON_FILENAME}
-   done
+       echo "INSERT INTO ${COLLECTION_NAME} VALUES($record);" >> ${JSON_FILENAME} 
+   done < ${SOURCE_FILENAME} 
 }
 
 ################################################################################
@@ -69,7 +69,7 @@ function run_sql_file ()
    typeset -r F_SQLFILE="$6"
 
    export PGPASSWORD="${F_PGPASSWORD}"
-   ${PGHOME}/bin/psql -qAt -h ${F_PGHOST} -p ${F_PGPORT} -U ${F_PGUSER} \
+   "${PGHOME}/bin/psql" -qAt -h ${F_PGHOST} -p ${F_PGPORT} -U ${F_PGUSER} \
                   --single-transaction -d ${F_DBNAME} -f "${F_SQLFILE}"
 }
 
@@ -174,7 +174,7 @@ function mk_pg_json_collection ()
    typeset -r F_PGPASSWORD="$5"
    typeset -r F_TABLE="$6"
    typeset -r F_SQL1="DROP TABLE IF EXISTS ${F_TABLE} CASCADE;"
-   typeset -r F_SQL2="CREATE TABLE  ${F_TABLE} (data JSONB);"
+   typeset -r F_SQL2="CREATE TABLE ${F_TABLE} (id bigint primary key,parent_id bigint, name varchar(100), application varchar(100), thumbnail bytea, notes text, is_deleted boolean);"
 
   process_log "creating ${F_TABLE} collection in postgreSQL."
   run_sql "${F_PGHOST}" "${F_PGPORT}" "${F_DBNAME}" "${F_PGUSER}" \
@@ -197,11 +197,12 @@ function pg_create_index_collection ()
    typeset -r F_PGUSER="$4"
    typeset -r F_PGPASSWORD="$5"
    typeset -r F_TABLE="$6"
-   typeset -r F_SQL="CREATE INDEX ${F_TABLE}_idx ON ${F_TABLE} USING gin(data);"
 
+   typeset -r F_SQL1="CREATE INDEX ${F_TABLE}_app_idx ON ${F_TABLE}(application, parent_id, is_deleted);"
+   
    process_log "creating index on postgreSQL collections."
    run_sql "${F_PGHOST}" "${F_PGPORT}" "${F_DBNAME}" "${F_PGUSER}" \
-           "${F_PGPASSWORD}" "${F_SQL}" \
+           "${F_PGPASSWORD}" "${F_SQL1}" \
             >/dev/null
 
 }
@@ -237,7 +238,7 @@ function pg_copy_benchmark ()
    typeset -r F_PGPASSWORD="$5"
    typeset -r F_COLLECTION="$6"
    typeset -r F_JSONFILE="$7"
-   typeset -r F_COPY="COPY ${F_COLLECTION} FROM STDIN;"
+   typeset -r F_COPY="COPY ${F_COLLECTION} FROM STDIN (DELIMITER ',');"
 
    DBEXISTS=$(if_dbexists "${F_PGHOST}" "${F_PGPORT}" "${F_DBNAME}" \
                           "${F_PGUSER}" "${F_PGPASSWORD}")
@@ -249,7 +250,6 @@ function pg_copy_benchmark ()
    total_time="$(get_timestamp_diff_nano "${end_time}" "${start_time}")"
 
    echo "${total_time}"
-
 }
 
 
@@ -288,18 +288,15 @@ function pg_select_benchmark ()
    typeset -r F_PGUSER="$4"
    typeset -r F_PGPASSWORD="$5"
    typeset -r F_COLLECTION="$6"
-   typeset -r F_SELECT1="SELECT data
+   typeset -r F_SELECT1="SELECT name
                          FROM ${F_COLLECTION}
-                           WHERE  (data->>'brand') = 'ACME';"
-   typeset -r F_SELECT2="SELECT data
+                           WHERE  not is_deleted;"
+   typeset -r F_SELECT2="SELECT name, thumbnail, notes
                          FROM ${F_COLLECTION}
-                           WHERE  (data->>'name') = 'Phone Service Basic Plan';"
-   typeset -r F_SELECT3="SELECT data
+                           WHERE  application = 'APP1' and parent_id = 1 and not is_deleted"
+   typeset -r F_SELECT3="SELECT name
                          FROM ${F_COLLECTION}
-                          WHERE  (data->>'name') = 'AC3 Case Red';"
-   typeset -r F_SELECT4="SELECT data
-                          FROM ${F_COLLECTION}
-                            WHERE  (data->>'type') = 'service';"
+                          WHERE  is_deleted;"
    local START end_time
 
    process_log "testing FIRST SELECT in postgresql."
@@ -326,15 +323,7 @@ function pg_select_benchmark ()
    end_time=$(get_timestamp_nano)
    total_time3="$(get_timestamp_diff_nano "${end_time}" "${start_time}")"
 
-   process_log "testing FOURTH SELECT in postgresql."
-   start_time=$(get_timestamp_nano)
-   run_sql "${F_PGHOST}" "${F_PGPORT}" "${F_DBNAME}" "${F_PGUSER}" \
-           "${F_PGPASSWORD}" \
-           "${F_SELECT4}" >/dev/null || exit_on_error "failed to execute SELECT 4."
-   end_time=$(get_timestamp_nano)
-   total_time4="$(get_timestamp_diff_nano "${end_time}" "${start_time}")"
-
-   AVG=$(( ($total_time1 + $total_time2 + $total_time3 + $total_time4 )/4 ))
+   AVG=$(( ($total_time1 + $total_time2 + $total_time3 )/3 ))
 
    echo "${AVG}"
 }
