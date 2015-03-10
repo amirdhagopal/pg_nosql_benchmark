@@ -86,7 +86,7 @@ function run_sql ()
    typeset -r F_SQL="$6"
 
    export PGPASSWORD="${F_PGPASSWORD}"
-   ${PGHOME}/bin/psql -qAt -h ${F_PGHOST} -p ${F_PGPORT} -U ${F_PGUSER} \
+   "${PGHOME}/bin/psql" -qAt -h ${F_PGHOST} -p ${F_PGPORT} -U ${F_PGUSER} \
                      -d ${F_DBNAME} -c "${F_SQL}"
 }
 
