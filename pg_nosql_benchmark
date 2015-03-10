@@ -42,24 +42,24 @@
 DIRECTORY=$(dirname $0)
 BASENAME=$(basename $0)
 
-PGHOME="/usr/ppas-9.3"
-PGHOST="172.17.0.4"
+PGHOME="/d/Program Files/PostgreSQL/9.4"
+PGHOST="localhost"
 PGPORT="5432"
 PGUSER="postgres"
-PGPASSWORD="postgres"
+PGPASSWORD="password"
 PGDATABASE="benchmark"
 
-PGBIN="/usr/ppas-9.3/bin"
+PGBIN="/d/Program Files/PostgreSQL/9.4/bin"
 
 ################################################################################
 # set mongo variables.
 ################################################################################
-MONGO="/usr/bin/mongo"
-MONGOIMPORT="/usr/bin/mongoimport"
-MONGOHOST="172.17.0.3"
+MONGO="/c/Progra~1/MongoDB/Server/3.0/bin/mongo"
+MONGOIMPORT="/c/Progra~1/MongoDB/Server/3.0/mongoimport"
+MONGOHOST="localhost"
 MONGOPORT="27017"
 MONGOUSER="mongo"
-MONGOPASSWORD="mongo"
+MONGOPASSWORD="password"
 MONGODBNAME="benchmark"
 
 COLLECTION_NAME="json_tables"
