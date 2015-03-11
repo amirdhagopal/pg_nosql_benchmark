@@ -62,8 +62,8 @@ MONGOPASSWORD="password"
 MONGODBNAME="benchmark"
 
 COLLECTION_NAME="json_tables"
-SAMPLEJSON="sample.json"
-SAMPLECSV="sample1.csv"
+SAMPLEJSON="json_sample.json"
+SAMPLECSV="csv_sample.csv"
 PG_INSERTS="sample_pg_inserts.json"
 MONGO_INSERTS="sample_mongo_inserts.json"
 
@@ -262,7 +262,8 @@ print_result "MONGO INSERT (ns)"  "${mongo_inserts_time[@]}"
 print_result "MONGO SELECT (ns)"  "${mongo_select_time[@]}"
 print_result "MONGO SIZE (bytes)" "${mongo_size_time[@]}"
 
-# Uncomment this to remove the temp files at the end.
-#rm -rf ${SAMPLEJSON}*
-#rm -rf ${PG_INSERTS}
-#rm -rf ${MONGO_INSERTS}
+# Removing the intermediate files
+rm -rf ${SAMPLEJSON}*
+rm -rf ${SAMPLECSV}*
+rm -rf ${PG_INSERTS}
+rm -rf ${MONGO_INSERTS}
