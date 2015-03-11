@@ -22,33 +22,41 @@ Data Format
 PostgreSQL
 
 Table Creation
-
+```
 CREATE TABLE ${TABLE_NAME} (id bigint primary key,parent_id bigint, name varchar(100), application varchar(100), thumbnail bytea, notes text, is_deleted boolean)
-
+```
 Index Creation
+```
 CREATE INDEX ${TABLE_NAME}_app_idx ON ${TABLE_NAME}(application, parent_id, is_deleted)
-
+```
 Sample Insert:
-INSERT INTO json_tables VALUES(1,8,'Name8','App8','thumbnail','notes',false);
-
+```
+INSERT INTO ${TABLE_NAME} VALUES(1,8,'Name8','App8','thumbnail','notes',false);
+```
 Select Queries:
+```
 Query1: SELECT name FROM ${TABLE_NAME} WHERE  not is_deleted;
 Query2: SELECT name, thumbnail, notes FROM ${TABLE_NAME} WHERE  application = 'APP1' and parent_id = 1 and not is_deleted;
 Query3: SELECT name FROM ${TABLE_NAME} WHERE  is_deleted;
+```
 
 MongoDB
 
 Index Creation
+
+```
 db.${COLLECTION_NAME}.ensureIndex( { application: 1, parent_id: 1, is_deleted: 1 });
-
+```
 Sample Insert
+```
 db.json_tables.insert({"id":1,"parent_id":8,"name": "Name8","application": "App8","thumbnail":"thumbnail","notes":"notes","is_deleted":false})
-
+```
 Select Operations:
+```
 Operation1: db.${COLLECTION_NAME}.find({ is_deleted: 'false'}, {name: 1})
 Operation2: db.${COLLECTION_NAME}.find({ application: 'APP1', parent_id: 1, is_deleted: 'false'}, {name: 1, thumbnail: 1, notes: 1})
 Operation3: db.${COLLECTION_NAME}.find({ is_deleted: 'true'}, {name: 1})
-
+```
 
 Requirements
 ------------
